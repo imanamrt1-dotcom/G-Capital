@@ -14,8 +14,8 @@ textes de repli générés à partir des données.
 """
 
 import os
+from datetime import date
 
-import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -25,52 +25,65 @@ LOGO_PATH = "geocapital-logo.png"
 st.set_page_config(page_title="GeoCapital — Connaître le passé pour anticiper le futur",
                    page_icon=LOGO_PATH if os.path.exists(LOGO_PATH) else "🌍", layout="wide")
 
+# ============================================================
+# 0. STYLE — inspiré du tableau de bord « Global Investment Overview »
+# ============================================================
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&display=swap');
-.stApp {background:#f6faf8; font-family:'Inter', sans-serif;}
-.main-title, .panel-title, .brand-name, .kpi-value {font-family:'Poppins', sans-serif;}
-section[data-testid="stSidebar"] {background:#ffffff; border-right:1px solid #e3efe9;}
-.main-title {font-size:2.6rem; font-weight:800; color:#065f46; letter-spacing:-0.5px;}
-.slogan {font-size:1.05rem; color:#5b6b62; margin-bottom:0.6rem;}
-.slogan b {color:#065f46;}
-.menu-label {font-size:0.78rem; font-weight:800; letter-spacing:1.4px; color:#8a9a92; text-transform:uppercase; margin:0.6rem 0 0.35rem 0;}
+.stApp {background:#f3f8f5; font-family:'Inter', sans-serif;}
+.block-container {padding-top:1.6rem;}
+section[data-testid="stSidebar"] {background:#ffffff; border-right:1px solid #e4eee9;}
 section[data-testid="stSidebar"] [data-testid="stImage"] img {border-radius:50%;}
-section[data-testid="stSidebar"] .stButton {margin-bottom:7px;}
-section[data-testid="stSidebar"] .stButton > button {display:flex !important; justify-content:flex-start !important; text-align:left !important; background:#ffffff; border:1.5px solid #dcebe2 !important; border-radius:12px; padding:0.62rem 0.95rem; font-size:0.97rem; font-weight:500; color:#243830; box-shadow:0 1px 3px rgba(6,95,70,0.05);}
+section[data-testid="stSidebar"] .stButton {margin-bottom:6px;}
+section[data-testid="stSidebar"] .stButton > button {display:flex !important; justify-content:flex-start !important;
+  text-align:left !important; background:#ffffff; border:1.5px solid #e4eee9 !important; border-radius:12px;
+  padding:0.6rem 0.95rem; font-size:0.96rem; font-weight:500; color:#27382f; box-shadow:none;}
 section[data-testid="stSidebar"] .stButton > button p {margin:0; text-align:left;}
-section[data-testid="stSidebar"] .stButton > button[kind="secondary"] {background:#ffffff; color:#243830;}
-section[data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover {background:#f0f9f4; border-color:#0e9f6e !important; color:#065f46;}
-section[data-testid="stSidebar"] .stButton > button[kind="primary"] {background:#cdf3e0; border-color:#0e9f6e !important; color:#065f46; font-weight:700; box-shadow:0 2px 6px rgba(6,95,70,0.10);}
-section[data-testid="stSidebar"] .stButton > button[kind="primary"]:hover {background:#b9ecd6; color:#065f46;}
-section[data-testid="stSidebar"] .stButton > button:focus {box-shadow:0 1px 3px rgba(6,95,70,0.05);}
-.brand-name {text-align:center; font-size:1.55rem; font-weight:800; color:#065f46; margin-top:0.1rem;}
-.brand-slogan {text-align:center; font-size:0.82rem; font-style:italic; color:#7a8a81; margin-bottom:0.4rem;}
-.kpi-card {background:#ffffff; border:1px solid #e3efe9; border-left:7px solid #9fe3c6;
-  border-radius:16px; padding:14px 16px 12px 16px; box-shadow:0 2px 10px rgba(6,95,70,0.07); min-height:104px;}
-.kpi-label {font-size:0.85rem; color:#374151; font-weight:600;}
-.kpi-value {font-size:1.85rem; font-weight:800; color:#065f46; line-height:1.15;}
-.kpi-sub {font-size:0.82rem; color:#0b8a5f;}
-.panel-title {font-size:1.35rem; font-weight:800; color:#065f46; margin:0.7rem 0 0.2rem 0;}
-div[data-testid="stPlotlyChart"] {background:#ffffff; border:1px solid #e3efe9; border-radius:18px;
+section[data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover {background:#f0faf5; border-color:#34b47f !important; color:#0b5d43;}
+section[data-testid="stSidebar"] .stButton > button[kind="primary"] {background:#c9f2df; border-color:#c9f2df !important; color:#0b5d43; font-weight:700;}
+section[data-testid="stSidebar"] .stButton > button[kind="primary"]:hover {background:#b7ecd3; color:#0b5d43;}
+.brand-name {font-family:'Poppins',sans-serif; text-align:center; font-size:1.6rem; font-weight:800; color:#0b5d43; margin-top:0.2rem;}
+.brand-slogan {text-align:center; font-size:0.8rem; font-style:italic; color:#7a8a81; margin-bottom:0.8rem;}
+.menu-label {font-size:0.75rem; font-weight:800; letter-spacing:1.4px; color:#8a9a92; text-transform:uppercase; margin:0.9rem 0 0.4rem 0;}
+.profile {display:flex; align-items:center; gap:10px; margin-top:1.2rem; padding-top:0.9rem; border-top:1px solid #e4eee9; color:#27382f;}
+.avatar {width:38px; height:38px; border-radius:50%; background:#c9f2df; flex-shrink:0;}
+.muted {color:#7a8a81; font-size:0.85rem;}
+.page-title {font-family:'Poppins',sans-serif; font-size:2.35rem; font-weight:800; color:#0b5d43; letter-spacing:-0.4px; line-height:1.2;}
+.page-sub {font-size:1.02rem; color:#6b7b72; margin:2px 0 16px 0;}
+.kpi {background:#ffffff; border:1px solid #e4eee9; border-left:6px solid #34b47f; border-radius:16px;
+  padding:16px 18px 14px 18px; box-shadow:0 2px 10px rgba(6,95,70,0.06); min-height:118px;}
+.kpi-label {font-size:0.9rem; color:#3b4a43; font-weight:600;}
+.kpi-value {font-family:'Poppins',sans-serif; font-size:2rem; font-weight:800; color:#0b5d43; line-height:1.15; margin:4px 0;}
+.kpi-sub {font-size:0.82rem; color:#0b8a5f; font-weight:600;}
+.panel {background:#eaf6ef; border:1px solid #e4eee9; border-radius:18px; padding:14px 18px 6px 18px; margin-bottom:10px;}
+.panel-title {font-family:'Poppins',sans-serif; font-size:1.3rem; font-weight:800; color:#0b5d43; margin:0.2rem 0 0.1rem 0;}
+.panel-meta {font-size:0.85rem; color:#6b7b72; margin-bottom:0.4rem;}
+.section-title {font-family:'Poppins',sans-serif; font-size:1.3rem; font-weight:800; color:#0b5d43; margin:1.2rem 0 0.5rem 0;}
+div[data-testid="stPlotlyChart"] {background:#ffffff; border:1px solid #e4eee9; border-radius:18px;
   box-shadow:0 2px 10px rgba(6,95,70,0.06); padding:4px 6px;}
-.rank-wrap {background:#ffffff; border:1px solid #e3efe9; border-radius:18px; padding:14px 18px 8px 18px;
-  box-shadow:0 2px 10px rgba(6,95,70,0.06);}
-.rank-head, .rank-row {display:grid; grid-template-columns:34px 1.6fr 2.2fr 0.8fr 1.5fr; gap:10px; align-items:center;}
-.rank-head {font-size:0.8rem; color:#8a9a92; font-weight:700; border-bottom:1px solid #eef4f1; padding-bottom:6px;}
-.rank-row {padding:8px 0; border-bottom:1px solid #f2f6f4; font-size:0.92rem;}
-.rank-row:last-child {border-bottom:none;}
-.rank-num {color:#8a9a92; font-weight:700;}
-.rank-name {font-weight:700; color:#1f2937;}
-.rank-name span {color:#8a9a92; font-weight:600; font-size:0.78rem;}
-.bar {background:#e8efec; border-radius:99px; height:12px; position:relative;}
-.bar > div {background:linear-gradient(90deg,#34c98e,#0b8a5f); height:12px; border-radius:99px;}
-.bar-score {font-size:0.82rem; color:#374151; font-weight:700; margin-left:6px;}
-.pill {display:inline-block; padding:3px 12px; border-radius:99px; font-size:0.75rem; font-weight:800; color:#ffffff; white-space:nowrap;}
+.legend {display:flex; align-items:center; gap:10px; margin:6px 8px 4px 8px; font-size:0.82rem; color:#6b7b72;}
+.legend-bar {flex:1; height:8px; border-radius:99px;}
+.tbl {background:#ffffff; border:1px solid #e4eee9; border-radius:16px; overflow:hidden; box-shadow:0 2px 10px rgba(6,95,70,0.05);}
+.tbl-head, .tbl-row {display:grid; grid-template-columns:36px 1.7fr 2.4fr 1fr 0.9fr 1.8fr; gap:12px; align-items:center; padding:10px 16px;}
+.tbl-head {background:#eef2f0; font-size:0.82rem; color:#5b6b62; font-weight:700;}
+.tbl-row {border-top:1px solid #eef3f0; font-size:0.93rem; color:#1f2937;}
+.tbl-row .cname {font-weight:700;}
+.tbl-row .cname span {color:#8a9a92; font-weight:600; font-size:0.78rem;}
+.bar-wrap {display:flex; align-items:center; gap:8px;}
+.bar {background:#e6ece9; border-radius:99px; height:10px; flex:1;}
+.bar > div {background:linear-gradient(90deg,#34c98e,#0b8a5f); height:10px; border-radius:99px;}
+.bar-score {font-size:0.82rem; color:#374151; font-weight:700; white-space:nowrap;}
+.pill {display:inline-block; padding:3px 12px; border-radius:99px; font-size:0.74rem; font-weight:800; color:#ffffff; white-space:nowrap;}
 .pill-green {background:#0b8a5f;} .pill-amber {background:#d9a40a;} .pill-orange {background:#e07b2a;} .pill-red {background:#d64541;}
-.verdict-box {padding:14px; border-radius:12px; font-size:1.1rem; font-weight:700; text-align:center;}
+.card {background:#ffffff; border:1px solid #e4eee9; border-radius:16px; padding:14px 16px; box-shadow:0 2px 10px rgba(6,95,70,0.05); height:100%;}
+.card ul {margin:6px 0 0 18px; padding:0;}
+.card li {margin-bottom:3px;}
+.tl-item {display:flex; gap:14px; background:#ffffff; border:1px solid #e4eee9; border-radius:14px; padding:10px 14px; margin-bottom:8px;}
+.tl-year {font-family:'Poppins',sans-serif; font-weight:800; color:#0b8a5f; min-width:58px;}
+.verdict-box {padding:16px; border-radius:14px; font-size:1.1rem; font-weight:800; text-align:center; margin-top:4px;}
+.chain-step {background:#ffffff; border:1px solid #cfe8da; border-top:4px solid #34b47f; border-radius:14px; padding:12px; min-height:120px;}
 .small-note {font-size:0.8rem; color:#666;}
-.chain-step {background:#eafaf1; border:1px solid #0b5345; border-radius:10px; padding:10px; min-height:110px;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -181,6 +194,10 @@ COUNTRIES = [
       allies=["Pays arabes (normalisation en cours)", "Turquie (influence au nord)"], rivaux=["Sanctions occidentales (en voie d'allègement partiel)"],
       dependances=["Aide internationale et levée des sanctions", "Retour des réfugiés et des capitaux de la diaspora"]),
 ]
+
+# Codes pays ISO-2 pour les drapeaux (emoji)
+ISO2 = {"USA": "US", "FRA": "FR", "JPN": "JP", "CHN": "CN", "SAU": "SA",
+        "ARE": "AE", "MAR": "MA", "ZAF": "ZA", "LBN": "LB", "SYR": "SY"}
 
 HISTORY = {
  "USA": [(1776,"Indépendance","Naissance des États-Unis : la future première économie mondiale part d'une république agricole."),
@@ -302,6 +319,11 @@ def make_quiz():
     return q
 QUIZ = make_quiz()
 
+# Pays de la carte : les 10 pays suivis, les autres restent neutres
+ALL_ISO = "AFG,AGO,ALB,ARE,ARG,ARM,ATA,ATF,AUS,AUT,AZE,BDI,BEL,BEN,BFA,BGD,BGR,BHS,BIH,BLR,BLZ,BMU,BOL,BRA,BRN,BTN,BWA,CAF,CAN,CHE,CHL,CHN,CIV,CMR,COD,COG,COL,CRI,CS-KM,CUB,CYP,CZE,DEU,DJI,DNK,DOM,DZA,ECU,EGY,ERI,ESH,ESP,EST,ETH,FIN,FJI,FLK,FRA,GAB,GBR,GEO,GHA,GIN,GMB,GNB,GNQ,GRC,GRL,GTM,GUF,GUY,HND,HRV,HTI,HUN,IDN,IND,IRL,IRN,IRQ,ISL,ISR,ITA,JAM,JOR,JPN,KAZ,KEN,KGZ,KHM,KOR,KWT,LAO,LBN,LBR,LBY,LKA,LSO,LTU,LUX,LVA,MAR,MDA,MDG,MEX,MKD,MLI,MLT,MMR,MNE,MNG,MOZ,MRT,MWI,MYS,NAM,NCL,NER,NGA,NIC,NLD,NOR,NPL,NZL,OMN,PAK,PAN,PER,PHL,PNG,POL,PRI,PRK,PRT,PRY,PSE,QAT,ROU,RUS,RWA,SAU,SDN,SEN,SLB,SLE,SLV,SOM,SRB,SSD,SUR,SVK,SVN,SWE,SWZ,SYR,TCD,TGO,THA,TJK,TKM,TLS,TTO,TUN,TUR,TWN,TZA,UGA,UKR,URY,USA,UZB,VEN,VNM,VUT,YEM,ZAF,ZMB,ZWE".split(",")
+
+MOIS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."]
+
 # ============================================================
 # 2. CALCULS — Score GeoCapital, Ke (Damodaran), verdict
 # ============================================================
@@ -359,9 +381,16 @@ def verdict(score):
     if score >= 45: return "ATTENDRE", "#ca6f1e"
     return "ÉVITER", "#c0392b"
 
+PILL = {"INVESTIR": "pill-green", "INVESTIR AVEC PRUDENCE": "pill-amber",
+        "ATTENDRE": "pill-orange", "ÉVITER": "pill-red"}
+
 def feu(valeur, seuils):
     """seuils = (max vert, max orange) pour un indicateur 'plus bas = mieux'."""
     return "🟢" if valeur <= seuils[0] else "🟠" if valeur <= seuils[1] else "🔴"
+
+def flag(iso):
+    code = ISO2.get(iso, "")
+    return "".join(chr(0x1F1E6 + ord(ch) - ord("A")) for ch in code) if code else "🏳️"
 
 def build_df(profil, rf, beta):
     rows = []
@@ -369,7 +398,9 @@ def build_df(profil, rf, beta):
         s = adjusted_score(c, profil)
         v, _ = verdict(s)
         rows.append({**c, "score": s, "ke": ke_pays(c, rf, beta), "verdict": v})
-    return pd.DataFrame(rows)
+    df = pd.DataFrame(rows)
+    df["iso2"] = df["iso"].map(lambda i: ISO2.get(i, ""))
+    return df
 
 def ai_text(kind, payload):
     """IA optionnelle (Claude Haiku 5.5) si une clé est présente dans les
@@ -395,6 +426,33 @@ def ai_text(kind, payload):
             pass  # repli silencieux : l'app ne doit jamais planter à cause de l'IA
     return None
 
+# ---------- petits composants HTML ----------
+def kpi(label, value, sub):
+    return (f'<div class="kpi"><div class="kpi-label">{label}</div>'
+            f'<div class="kpi-value">{value}</div><div class="kpi-sub">{sub}</div></div>')
+
+def header(title, sub):
+    st.markdown(f'<div class="page-title">{title}</div><div class="page-sub">{sub}</div>',
+                unsafe_allow_html=True)
+
+def top_table_html(frame):
+    rows = ['<div class="tbl"><div class="tbl-head"><div>#</div><div>Pays</div>'
+            '<div>Score GeoCapital</div><div>Croissance PIB</div><div>Ke exigé</div><div>Verdict</div></div>']
+    for i, (_, r) in enumerate(frame.iterrows(), start=1):
+        rows.append(
+            f'<div class="tbl-row"><div class="muted">{i}.</div>'
+            f'<div class="cname">{flag(r["iso"])} {r["nom"]} <span>{r["iso"]} · {r["notation"]}</span></div>'
+            f'<div class="bar-wrap"><div class="bar"><div style="width:{r["score"]}%;"></div></div>'
+            f'<span class="bar-score">{r["score"]}/100</span></div>'
+            f'<div>{r["croissance"]:+.1f} %</div>'
+            f'<div>{r["ke"]} %</div>'
+            f'<div><span class="pill {PILL.get(r["verdict"], "pill-green")}">{r["verdict"]}</span></div></div>')
+    rows.append('</div>')
+    return "".join(rows)
+
+def list_html(items):
+    return "<ul>" + "".join(f"<li>{x}</li>" for x in items) + "</ul>"
+
 # ============================================================
 # 3. INTERFACE
 # ============================================================
@@ -402,60 +460,69 @@ if "visited" not in st.session_state: st.session_state.visited = set()
 if "quiz_score" not in st.session_state: st.session_state.quiz_score = 0
 if "quiz_done" not in st.session_state: st.session_state.quiz_done = set()
 
-if os.path.exists(LOGO_PATH):
-    _lc = st.sidebar.columns([1, 2.2, 1])
-    _lc[1].image(LOGO_PATH, width=118)
-st.sidebar.markdown('<div class="brand-name">GeoCapital</div>', unsafe_allow_html=True)
-st.sidebar.markdown('<div class="brand-slogan">Connaître le passé pour anticiper le futur</div>', unsafe_allow_html=True)
-PAGES = ["Carte Vivante", "Fiche Pays", "Comparateur",
-         "Décodeur d'Actualité", "Portefeuille Mondial", "Carte Mentale & Quiz"]
+PAGES = ["Tableau de bord", "Fiche Pays", "Décodeur d'Actualité", "Comparateur",
+         "Portefeuille Mondial", "Carte Mentale & Quiz", "Méthodologie"]
+ICONS = {"Tableau de bord": "📊", "Fiche Pays": "🌍", "Décodeur d'Actualité": "📰",
+         "Comparateur": "⚖️", "Portefeuille Mondial": "💼", "Carte Mentale & Quiz": "🧠",
+         "Méthodologie": "⚙️"}
 if "nav_page" not in st.session_state:
     st.session_state.nav_page = PAGES[0]
+
+# ---------- barre latérale ----------
+if os.path.exists(LOGO_PATH):
+    _lc = st.sidebar.columns([1, 2, 1])
+    _lc[1].image(LOGO_PATH, width=110)
+st.sidebar.markdown('<div class="brand-name">GeoCapital</div>', unsafe_allow_html=True)
+st.sidebar.markdown('<div class="brand-slogan">Connaître le passé pour anticiper le futur</div>', unsafe_allow_html=True)
+
 st.sidebar.markdown('<div class="menu-label">Navigation</div>', unsafe_allow_html=True)
 for _p in PAGES:
-    if st.sidebar.button(_p, key="nav_" + _p, use_container_width=True,
+    if st.sidebar.button(f"{ICONS[_p]}  {_p}", key="nav_" + _p, use_container_width=True,
                          type="primary" if st.session_state.nav_page == _p else "secondary"):
         st.session_state.nav_page = _p
         st.rerun()
 page = st.session_state.nav_page
+
 st.sidebar.markdown('<div class="menu-label">Réglages du modèle</div>', unsafe_allow_html=True)
 profil = st.sidebar.selectbox("Profil d'investisseur", ["Équilibré", "Prudent", "Audacieux"])
 rf = st.sidebar.slider("Taux sans risque mondial Rf (%)", 0.0, 8.0, 4.0, 0.25)
 beta = st.sidebar.slider("Bêta (sensibilité au marché)", 0.5, 1.5, 1.0, 0.05)
-with st.sidebar.expander("Glossaire express"):
-    st.markdown("""
-    - **CDS** : assurance contre le défaut d'un État ; cher = État jugé risqué.
-    - **Notation souveraine** : note (AAA à D) donnée à un État par les agences.
-    - **ERP** : prime de risque totale exigée pour investir dans un pays (Damodaran).
-    - **Ke** : rendement minimum exigé par un investisseur : Ke = Rf + β × ERP.
-    - **HHI** : indice de concentration d'un portefeuille (proche de 1 = concentré).
-    """)
+st.sidebar.markdown(f'<div class="profile"><div class="avatar"></div><div><b>Mon espace</b>'
+                    f'<br><span class="muted">Profil : {profil}</span></div></div>', unsafe_allow_html=True)
+
 df = build_df(profil, rf, beta)
 
-st.markdown('<div class="main-title">GeoCapital</div>', unsafe_allow_html=True)
-st.markdown('<div class="slogan"><b>« Connaître le passé pour anticiper le futur »</b> — Clique sur un pays. Comprends son histoire. Mesure son risque. Décide comme un investisseur.</div>', unsafe_allow_html=True)
+# ---------- PAGE 1 : TABLEAU DE BORD ----------
+if page == "Tableau de bord":
+    hc1, hc2 = st.columns([3, 1.4])
+    with hc1:
+        header("Vue d'ensemble du capital mondial",
+               "Suis les flux de capitaux et les opportunités — « Connaître le passé pour anticiper le futur »")
+    with hc2:
+        q = st.text_input("Recherche", placeholder="🔍  Rechercher un pays...", label_visibility="collapsed")
 
-ALL_ISO = "AFG,AGO,ALB,ARE,ARG,ARM,ATA,ATF,AUS,AUT,AZE,BDI,BEL,BEN,BFA,BGD,BGR,BHS,BIH,BLR,BLZ,BMU,BOL,BRA,BRN,BTN,BWA,CAF,CAN,CHE,CHL,CHN,CIV,CMR,COD,COG,COL,CRI,CS-KM,CUB,CYP,CZE,DEU,DJI,DNK,DOM,DZA,ECU,EGY,ERI,ESH,ESP,EST,ETH,FIN,FJI,FLK,FRA,GAB,GBR,GEO,GHA,GIN,GMB,GNB,GNQ,GRC,GRL,GTM,GUF,GUY,HND,HRV,HTI,HUN,IDN,IND,IRL,IRN,IRQ,ISL,ISR,ITA,JAM,JOR,JPN,KAZ,KEN,KGZ,KHM,KOR,KWT,LAO,LBN,LBR,LBY,LKA,LSO,LTU,LUX,LVA,MAR,MDA,MDG,MEX,MKD,MLI,MLT,MMR,MNE,MNG,MOZ,MRT,MWI,MYS,NAM,NCL,NER,NGA,NIC,NLD,NOR,NPL,NZL,OMN,PAK,PAN,PER,PHL,PNG,POL,PRI,PRK,PRT,PRY,PSE,QAT,ROU,RUS,RWA,SAU,SDN,SEN,SLB,SLE,SLV,SOM,SRB,SSD,SUR,SVK,SVN,SWE,SWZ,SYR,TCD,TGO,THA,TJK,TKM,TLS,TTO,TUN,TUR,TWN,TZA,UGA,UKR,URY,USA,UZB,VEN,VNM,VUT,YEM,ZAF,ZMB,ZWE".split(",")
+    best = df.loc[df["score"].idxmax()]
+    pos = int(df["verdict"].str.contains("INVESTIR").sum())
+    med_ke = round(float(df["ke"].median()), 2)
+    k = st.columns(4)
+    cards = [("Pays suivis", "10", "Du plus sûr au plus fragile"),
+             ("Meilleur score", f"{best['score']} / 100", f"{best['nom']} — {best['verdict']}"),
+             ("Ke médian exigé", f"{med_ke} %", "Le prix du risque, au centre du classement"),
+             ("Verdicts positifs", f"{pos} / 10", "Investir ou investir avec prudence")]
+    for col, (lab, val, sub) in zip(k, cards):
+        col.markdown(kpi(lab, val, sub), unsafe_allow_html=True)
 
-# ---------- PAGE 1 : CARTE VIVANTE ----------
-if page == "Carte Vivante":
-    _best = df.loc[df["score"].idxmax()]
-    _pos = int(df["verdict"].str.contains("INVESTIR").sum())
-    _med_ke = round(float(df["ke"].median()), 2)
-    _k = st.columns(4)
-    _cards = [
-        ("Pays couverts", "10", "Du plus sûr au plus fragile"),
-        ("Meilleur score", f"{_best['score']} / 100", f"{_best['nom']} — {_best['verdict']}"),
-        ("Ke médian exigé", f"{_med_ke} %", "Le prix du risque, au centre du classement"),
-        ("Verdicts positifs", f"{_pos} / 10", "Investir ou investir avec prudence"),
-    ]
-    for _colst, (_lab, _val, _sub) in zip(_k, _cards):
-        _colst.markdown(f'<div class="kpi-card"><div class="kpi-label">{_lab}</div>'
-                        f'<div class="kpi-value">{_val}</div><div class="kpi-sub">{_sub}</div></div>',
-                        unsafe_allow_html=True)
-    mode = st.selectbox("Colorer la carte par :", ["Score GeoCapital", "Rendement exigé Ke", "Croissance du PIB"])
+    today = date.today()
+    st.markdown('<div class="section-title">Carte de chaleur du capital mondial</div>', unsafe_allow_html=True)
+    pc1, pc2 = st.columns([2.2, 1])
+    with pc1:
+        st.markdown(f'<div class="panel-meta">Mis à jour le {today.day} {MOIS[today.month - 1]} {today.year} '
+                    f'• Profil : {profil} • Pays suivis mis en évidence</div>', unsafe_allow_html=True)
+    with pc2:
+        mode = st.selectbox("Colorer la carte par :", ["Score GeoCapital", "Rendement exigé Ke", "Croissance du PIB"],
+                            label_visibility="collapsed")
+
     col = {"Score GeoCapital": "score", "Rendement exigé Ke": "ke", "Croissance du PIB": "croissance"}[mode]
-    st.markdown(f'<div class="panel-title">Carte mondiale — {mode} (profil : {profil})</div>', unsafe_allow_html=True)
     _greens = [[0.0, "#eaf4ee"], [0.35, "#a9dcc0"], [0.65, "#4cb184"], [1.0, "#0b8a5f"]]
     _ke_scale = [[0.0, "#eaf4ee"], [0.06, "#cdeeda"], [0.3, "#7cc79b"], [0.55, "#f2c94c"], [0.8, "#eb8a4c"], [1.0, "#d64541"]]
     if mode == "Score GeoCapital":
@@ -464,14 +531,18 @@ if page == "Carte Vivante":
         _scale, _rng = _greens, (-1, 6)
     else:
         _scale, _rng = _ke_scale, (-1, 30)
+
     _base = pd.DataFrame({"iso": ALL_ISO})
-    _base["val"] = -1.0; _base["nom"] = _base["iso"]
+    _base["val"] = -1.0
+    _base["nom"] = _base["iso"]
     _base["s_txt"] = "—"; _base["k_txt"] = "—"; _base["verdict"] = "Hors périmètre (10 pays suivis)"
-    _cols = list(dict.fromkeys(["iso", "nom", "score", "ke", "verdict", col]))
-    _ours = df[_cols].copy(); _ours["val"] = _ours[col]
+    _sel = list(dict.fromkeys(["iso", "nom", "score", "ke", "verdict", col]))
+    _ours = df[_sel].copy()
+    _ours["val"] = _ours[col]
     _ours["s_txt"] = _ours["score"].map(lambda v: f"{v:.1f} / 100")
     _ours["k_txt"] = _ours["ke"].map(lambda v: f"{v:.2f} %")
     df_map = pd.concat([_base[~_base["iso"].isin(_ours["iso"])], _ours], ignore_index=True)
+
     fig = px.choropleth(df_map, locations="iso", color="val", hover_name="nom",
                         custom_data=["s_txt", "k_txt", "verdict"],
                         color_continuous_scale=_scale, range_color=_rng)
@@ -479,102 +550,132 @@ if page == "Carte Vivante":
                       hovertemplate=("<b>%{hovertext}</b><br>Score : %{customdata[0]}"
                                      "<br>Ke exigé : %{customdata[1]}<br>%{customdata[2]}<extra></extra>"))
     fig.update_coloraxes(showscale=False)
-    fig.update_layout(height=540, margin=dict(l=0, r=0, t=6, b=0),
+    fig.update_layout(height=470, margin=dict(l=0, r=0, t=6, b=0),
                       paper_bgcolor="white", plot_bgcolor="white",
-                      geo=dict(bgcolor="white", landcolor="#d9edde", oceancolor="#f2f8f4",
+                      geo=dict(bgcolor="white", landcolor="#e3f1e8", oceancolor="#f2f8f4",
                                showocean=True, showframe=False, showcoastlines=False,
-                               fitbounds="locations", projection_type="equirectangular"))
+                               fitbounds="locations", projection_type="natural earth"))
     st.plotly_chart(fig, use_container_width=True)
+
     _grad = ("linear-gradient(90deg,#0b8a5f,#d64541)" if mode == "Rendement exigé Ke"
              else "linear-gradient(90deg,#e6f3ea,#0b8a5f)")
-    st.markdown(f'<div style="display:flex; align-items:center; gap:10px; margin:4px 8px 0 8px; '
-                f'font-size:0.8rem; color:#7a8a81;"><span>{mode} : faible</span>'
-                f'<div style="flex:1; height:8px; border-radius:99px; background:{_grad};"></div>'
-                f'<span>élevé</span></div>', unsafe_allow_html=True)
-    st.markdown('<div class="panel-title">Classement des 10 pays</div>', unsafe_allow_html=True)
-    _pill = {"INVESTIR": "pill-green", "INVESTIR AVEC PRUDENCE": "pill-amber",
-             "ATTENDRE": "pill-orange", "ÉVITER": "pill-red"}
-    _rows = ['<div class="rank-wrap"><div class="rank-head"><div>#</div><div>Pays</div>'
-             '<div>Score GeoCapital</div><div>Ke exigé</div><div>Verdict</div></div>']
-    for _i, (_, _r) in enumerate(df.sort_values("score", ascending=False).iterrows(), start=1):
-        _rows.append(
-            f'<div class="rank-row"><div class="rank-num">{_i}.</div>'
-            f'<div class="rank-name">{_r["nom"]} <span>{_r["iso"]} · {_r["notation"]}</span></div>'
-            f'<div style="display:flex; align-items:center;"><div class="bar" style="flex:1;">'
-            f'<div style="width:{_r["score"]}%;"></div></div><span class="bar-score">{_r["score"]}/100</span></div>'
-            f'<div>{_r["ke"]} %</div>'
-            f'<div><span class="pill {_pill.get(_r["verdict"], "pill-green")}">{_r["verdict"]}</span></div></div>')
-    _rows.append('</div>')
-    st.markdown("".join(_rows), unsafe_allow_html=True)
+    st.markdown(f'<div class="legend"><span>{mode} : faible</span>'
+                f'<div class="legend-bar" style="background:{_grad};"></div><span>élevé</span></div>',
+                unsafe_allow_html=True)
+
+    st.markdown('<div class="section-title">Top pays par score d\'investissement</div>', unsafe_allow_html=True)
+    view = df.sort_values("score", ascending=False)
+    if q:
+        view = view[view["nom"].str.contains(q, case=False, na=False)]
+    if view.empty:
+        st.info("Aucun pays ne correspond à cette recherche.")
+    else:
+        st.markdown(top_table_html(view), unsafe_allow_html=True)
     st.info("Lecture : un score élevé = pays attractif. Un Ke élevé n'est pas une promesse de gain : c'est le prix du risque, exigé par les investisseurs.")
 
 # ---------- PAGE 2 : FICHE PAYS ----------
 elif page == "Fiche Pays":
+    header("Fiche Pays", "Histoire, institutions, indicateurs et verdict d'investissement")
     nom = st.selectbox("Choisir un pays", df["nom"].tolist())
     c = next(x for x in COUNTRIES if x["nom"] == nom)
     row = df[df["nom"] == nom].iloc[0]
     st.session_state.visited.add(c["iso"])
     vtxt, vcol = verdict(row["score"])
+
     a, b, cc = st.columns(3)
-    a.metric("Score GeoCapital (profil " + profil + ")", f"{row['score']} / 100")
-    b.metric("Rendement exigé Ke", f"{row['ke']} %", help="Ke = Rf + β × ERP totale (Damodaran)")
-    cc.markdown(f'<div class="verdict-box" style="background:{vcol}22; border:2px solid {vcol};">{vtxt}</div>', unsafe_allow_html=True)
-    st.markdown(f"**Catégorie :** {c['categorie']} · **Région :** {c['region']} · **Devise :** {c['devise']} · **Banque centrale :** {c['banque_centrale']}")
+    a.markdown(kpi(f"Score GeoCapital (profil {profil})", f"{row['score']} / 100", c["categorie"]), unsafe_allow_html=True)
+    b.markdown(kpi("Rendement exigé Ke", f"{row['ke']} %", "Ke = Rf + β × ERP totale"), unsafe_allow_html=True)
+    cc.markdown(f'<div class="verdict-box" style="background:{vcol}1f; border:2px solid {vcol}; color:{vcol};">{vtxt}</div>',
+                unsafe_allow_html=True)
+
+    st.markdown(f"**Région :** {c['region']} · **Devise :** {c['devise']} · **Banque centrale :** {c['banque_centrale']}")
     st.markdown(f"**Régime :** {c['regime']}. {c['institutions']}")
 
-    st.subheader("📜 Frise historique — comment ce pays s'est construit")
+    st.markdown('<div class="section-title">📜 Frise historique — comment ce pays s\'est construit</div>', unsafe_allow_html=True)
     for annee, titre, texte in HISTORY[c["iso"]]:
-        st.markdown(f"**{annee} — {titre}** : {texte}")
+        st.markdown(f'<div class="tl-item"><div class="tl-year">{annee}</div>'
+                    f'<div><b>{titre}</b><br>{texte}</div></div>', unsafe_allow_html=True)
 
-    st.subheader("🤝 Relations avec le monde")
+    st.markdown('<div class="section-title">🤝 Relations avec le monde</div>', unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
-    c1.markdown("**Alliés / partenaires**\n" + "\n".join(f"\n- {x}" for x in c["allies"]))
-    c2.markdown("**Rivaux / tensions**\n" + "\n".join(f"\n- {x}" for x in c["rivaux"]))
-    c3.markdown("**Dépendances clés**\n" + "\n".join(f"\n- {x}" for x in c["dependances"]))
+    c1.markdown(f'<div class="card"><b>Alliés / partenaires</b>{list_html(c["allies"])}</div>', unsafe_allow_html=True)
+    c2.markdown(f'<div class="card"><b>Rivaux / tensions</b>{list_html(c["rivaux"])}</div>', unsafe_allow_html=True)
+    c3.markdown(f'<div class="card"><b>Dépendances clés</b>{list_html(c["dependances"])}</div>', unsafe_allow_html=True)
 
-    st.subheader("📊 Tableau de bord financier (données de démonstration 2024)")
+    st.markdown('<div class="section-title">📊 Tableau de bord financier (données de démonstration 2024)</div>', unsafe_allow_html=True)
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric(f"{feu(c['inflation'], (3, 7))} Inflation", f"{c['inflation']} %", help="Inflation faible et stable = épargne protégée.")
-    m2.metric(f"{feu(c['dette'] if c['dette'] else 999, (70, 110))} Dette publique / PIB", f"{c['dette']} %" if c["dette"] else "Non publiée", help="Dette élevée = l'État paie cher pour emprunter = risque pour l'investisseur.")
-    m3.metric("Notation souveraine", c["notation"], help="Note de l'État par les agences : AAA = le plus sûr, D = défaut.")
-    m4.metric("CDS souverain", f"{c['cds']} bps" if c["cds"] else "⚠️ Non disponible", help="Prime d'assurance contre le défaut de l'État. Absent = signal de risque.")
+    m1.markdown(kpi(f"{feu(c['inflation'], (3, 7))} Inflation", f"{c['inflation']} %",
+                    "Inflation faible et stable = épargne protégée"), unsafe_allow_html=True)
+    m2.markdown(kpi(f"{feu(c['dette'] if c['dette'] else 999, (70, 110))} Dette publique / PIB",
+                    f"{c['dette']} %" if c["dette"] else "Non publiée",
+                    "Dette élevée = risque pour l'investisseur"), unsafe_allow_html=True)
+    m3.markdown(kpi("Notation souveraine", c["notation"], "AAA = le plus sûr, D = défaut"), unsafe_allow_html=True)
+    m4.markdown(kpi("CDS souverain", f"{c['cds']} bps" if c["cds"] else "⚠️ Non disponible",
+                    "Assurance contre le défaut de l'État"), unsafe_allow_html=True)
     m5, m6, m7, m8 = st.columns(4)
-    m5.metric("Croissance du PIB", f"{c['croissance']} %")
-    m6.metric("Taux directeur", f"{c['taux']} %")
-    m7.metric("Chômage", f"{c['chomage']} %")
-    m8.metric("Prime de risque ERP (Damodaran)", f"{c['erp']} %")
+    m5.markdown(kpi("Croissance du PIB", f"{c['croissance']} %", "Dynamique de l'économie"), unsafe_allow_html=True)
+    m6.markdown(kpi("Taux directeur", f"{c['taux']} %", "Coût de l'argent de la banque centrale"), unsafe_allow_html=True)
+    m7.markdown(kpi("Chômage", f"{c['chomage']} %", "Part de la population active sans emploi"), unsafe_allow_html=True)
+    m8.markdown(kpi("Prime de risque ERP", f"{c['erp']} %", "Damodaran, prime totale pays"), unsafe_allow_html=True)
     st.markdown(f"**Bourse :** {c['bourse']} · **Devise sur 5 ans :** {c['devise_5ans']} · **Réserves :** {c['reserves']}")
-    st.markdown(f"**Note méthodologique Ke :** Ke = {rf} % (Rf) + {beta} × {c['erp']} % (ERP) = **{row['ke']} %**. Le CDS n'est pas rajouté : l'ERP totale contient déjà la prime de risque pays (éviter le double comptage). Traduction : un investisseur rationnel doit exiger au moins {row['ke']} % dans ce pays — en dessous, le risque n'est pas payé.")
+    st.markdown(f"**Note méthodologique Ke :** Ke = {rf} % (Rf) + {beta} × {c['erp']} % (ERP) = **{row['ke']} %**. "
+                f"Le CDS n'est pas rajouté : l'ERP totale contient déjà la prime de risque pays (éviter le double comptage). "
+                f"Traduction : un investisseur rationnel doit exiger au moins {row['ke']} % dans ce pays — en dessous, le risque n'est pas payé.")
     if c["cds"] is None:
         st.warning("⚠️ Donnée manquante (CDS / notation) : dans GeoCapital, une donnée manquante est un signal de risque en soi — elle vaut 0 point sur ce critère.")
 
-    st.subheader("🎯 Détail du Score GeoCapital")
+    st.markdown('<div class="section-title">🎯 Détail du Score GeoCapital</div>', unsafe_allow_html=True)
     comp = components(c)
     figb = go.Figure(go.Bar(x=[pt for pt, mx in comp.values()], y=list(comp.keys()), orientation="h",
                             text=[f"{pt}/{mx}" for pt, mx in comp.values()], textposition="outside",
-                            marker_color="#0b5345"))
-    figb.update_layout(height=300, xaxis=dict(range=[0, 21]), margin=dict(l=10, r=40, t=10, b=10))
+                            marker_color="#0b8a5f"))
+    figb.update_layout(height=300, xaxis=dict(range=[0, 21]), margin=dict(l=10, r=40, t=10, b=10),
+                       paper_bgcolor="white", plot_bgcolor="white")
     st.plotly_chart(figb, use_container_width=True)
-    best = max(comp, key=lambda k: comp[k][0] / comp[k][1]); worst = min(comp, key=lambda k: comp[k][0] / comp[k][1])
+    best_k = max(comp, key=lambda k: comp[k][0] / comp[k][1])
+    worst_k = min(comp, key=lambda k: comp[k][0] / comp[k][1])
     st.markdown(f"**Secteurs porteurs :** {' · '.join(c['secteurs'])}")
     if st.button("Expliquer ce verdict simplement"):
         prompt = (f"Explique le verdict d'investissement pour {c['nom']} : score {row['score']}/100, "
                   f"Ke exigé {row['ke']} %, notation {c['notation']}, inflation {c['inflation']} %, dette {c['dette']} % du PIB. "
-                  f"Point fort : {best}. Point faible : {worst}.")
+                  f"Point fort : {best_k}. Point faible : {worst_k}.")
         txt = ai_text("verdict", prompt) or (
-            f"**{c['nom']}** obtient {row['score']}/100 (profil {profil}). Son point fort : *{best}*. "
-            f"Son point faible : *{worst}*. Le rendement exigé de {row['ke']} % reflète ce risque : "
+            f"**{c['nom']}** obtient {row['score']}/100 (profil {profil}). Son point fort : *{best_k}*. "
+            f"Son point faible : *{worst_k}*. Le rendement exigé de {row['ke']} % reflète ce risque : "
             f"plus il est élevé, plus l'investisseur doit être payé pour accepter l'incertitude de ce pays. "
             f"Verdict : {vtxt}.")
         st.success(txt)
 
-# ---------- PAGE 3 : COMPARATEUR ----------
+# ---------- PAGE 3 : DÉCODEUR D'ACTUALITÉ ----------
+elif page == "Décodeur d'Actualité":
+    header("Décodeur d'Actualité", "De l'événement à ton portefeuille, étape par étape")
+    ev = next(e for e in EVENTS if e["titre"] == st.selectbox("Choisir un événement", [e["titre"] for e in EVENTS]))
+    st.markdown('<div class="section-title">🔗 La chaîne causale : de l\'événement à ton portefeuille</div>', unsafe_allow_html=True)
+    cols = st.columns(4)
+    labels = ["1️⃣ Événement", "2️⃣ Conséquence économique", "3️⃣ Conséquence financière", "4️⃣ Gagnants / Perdants"]
+    for col_, lab, txt in zip(cols, labels, ev["chaine"]):
+        col_.markdown(f'<div class="chain-step"><b>{lab}</b><br>{txt}</div>', unsafe_allow_html=True)
+    g, p = st.columns(2)
+    g.success("**Pays / acteurs gagnants :** " + ", ".join(ev["gagnants"]))
+    p.error("**Pays / acteurs perdants :** " + ", ".join(ev["perdants"]))
+    st.markdown(f"**Le passé éclaire :** {ev['passe']}")
+    if st.button("Décrypter avec l'IA"):
+        txt = ai_text("event", f"Décrypte cet événement pour un étudiant non expert : {ev['titre']}. "
+                               f"Chaîne : {' → '.join(ev['chaine'])}") or \
+              ("En résumé : cet événement se propage toujours par la même mécanique — prix et flux d'abord, "
+               "devises et taux ensuite, décisions d'investissement enfin. Les pays à réserves et faible dette absorbent le choc ; "
+               "les pays fragiles le paient en prime de risque.")
+        st.success(txt)
+
+# ---------- PAGE 4 : COMPARATEUR ----------
 elif page == "Comparateur":
+    header("Comparateur", "Mets deux ou trois pays face à face : score, risque et indicateurs")
     presets = {"USA vs Chine": ["États-Unis", "Chine"], "Arabie Saoudite vs Émirats": ["Arabie Saoudite", "Émirats Arabes Unis"],
                "Liban vs Syrie": ["Liban", "Syrie"], "France vs Japon": ["France", "Japon"],
                "Maroc vs Afrique du Sud": ["Maroc", "Afrique du Sud"]}
     choix_preset = st.selectbox("Comparaisons pédagogiques", list(presets.keys()))
-    sel = st.multiselect("Pays à comparer (2 ou 3)", df["nom"].tolist(), default=presets[choix_preset], max_selections=3)
+    sel = st.multiselect("Pays à comparer (2 ou 3)", df["nom"].tolist(),
+                         default=presets[choix_preset], max_selections=3)
     if len(sel) >= 2:
         sub = df[df["nom"].isin(sel)]
         st.dataframe(sub[["nom", "score", "ke", "verdict", "croissance", "inflation", "dette", "notation", "erp"]]
@@ -586,37 +687,19 @@ elif page == "Comparateur":
         figr = go.Figure()
         for _, r in sub.iterrows():
             co = components(next(x for x in COUNTRIES if x["iso"] == r["iso"]))
-            figr.add_trace(go.Scatterpolar(r=[100 * pt / mx for pt, mx in co.values()] + [100 * list(co.values())[0][0] / list(co.values())[0][1]],
-                                           theta=cats + [cats[0]], fill="toself", name=r["nom"]))
-        figr.update_layout(height=460, polar=dict(radialaxis=dict(range=[0, 100])))
+            vals = [100 * pt / mx for pt, mx in co.values()]
+            figr.add_trace(go.Scatterpolar(r=vals + [vals[0]], theta=cats + [cats[0]], fill="toself", name=r["nom"]))
+        figr.update_layout(height=460, polar=dict(radialaxis=dict(range=[0, 100])),
+                           paper_bgcolor="white", plot_bgcolor="white")
         st.plotly_chart(figr, use_container_width=True)
-        safest = sub.loc[sub["score"].idxmax(), "nom"]; highke = sub.loc[sub["ke"].idxmax(), "nom"]
+        safest = sub.loc[sub["score"].idxmax(), "nom"]
+        highke = sub.loc[sub["ke"].idxmax(), "nom"]
         st.info(f"🏆 Le plus sûr du groupe : **{safest}**. 💰 Le rendement exigé le plus élevé (donc le risque le mieux payé sur le papier) : **{highke}**. "
                 "Attention : un Ke élevé ne veut pas dire un bon investissement — il veut dire un risque élevé qu'il faut être payé pour porter.")
 
-# ---------- PAGE 4 : DÉCODEUR D'ACTUALITÉ ----------
-elif page == "Décodeur d'Actualité":
-    ev_titres = [e["titre"] for e in EVENTS]
-    ev = next(e for e in EVENTS if e["titre"] == st.selectbox("Choisir un événement", ev_titres))
-    st.subheader("🔗 La chaîne causale : de l'événement à ton portefeuille")
-    cols = st.columns(4)
-    labels = ["1️⃣ Événement", "2️⃣ Conséquence économique", "3️⃣ Conséquence financière", "4️⃣ Gagnants / Perdants"]
-    for col, lab, txt in zip(cols, labels, ev["chaine"]):
-        col.markdown(f'<div class="chain-step"><b>{lab}</b><br>{txt}</div>', unsafe_allow_html=True)
-    g, p = st.columns(2)
-    g.success("**Pays / acteurs gagnants :** " + ", ".join(ev["gagnants"]))
-    p.error("**Pays / acteurs perdants :** " + ", ".join(ev["perdants"]))
-    st.markdown(f"**Le passé éclaire :** {ev['passe']}")
-    if st.button("Décrypter avec l'IA"):
-        txt = ai_text("event", f"Décrypte cet événement pour un étudiant non expert : {ev['titre']}. Chaîne : {' → '.join(ev['chaine'])}") or \
-              ("En résumé : cet événement se propage toujours par la même mécanique — prix et flux d'abord, "
-               "devises et taux ensuite, décisions d'investissement enfin. Les pays à réserves et faible dette absorbent le choc ; "
-               "les pays fragiles le paient en prime de risque.")
-        st.success(txt)
-
 # ---------- PAGE 5 : PORTEFEUILLE MONDIAL ----------
 elif page == "Portefeuille Mondial":
-    st.subheader("Répartis 100 000 (fictifs) entre les 10 pays")
+    header("Portefeuille Mondial", "Répartis 100 000 (fictifs) entre les 10 pays et observe le couple rendement / risque")
     devise_pf = st.selectbox("Devise du portefeuille", ["USD", "MAD"])
     weights = {}
     cols = st.columns(2)
@@ -631,27 +714,33 @@ elif page == "Portefeuille Mondial":
         w = {k: v / 100 for k, v in weights.items() if v > 0}
         exp_ret = sum(w[k] * df.loc[df["iso"] == k, "ke"].iloc[0] for k in w)
         risk = sum(w[k] * (100 - df.loc[df["iso"] == k, "score"].iloc[0]) for k in w)
-        hhi = sum(v * v for v in w.values()); div = (1 - hhi) * 100
+        hhi = sum(v * v for v in w.values())
+        div = (1 - hhi) * 100
         a, b, cc = st.columns(3)
-        a.metric("Rendement espéré (pondéré par les Ke)", f"{exp_ret:.2f} %")
-        b.metric("Risque du portefeuille (/100)", f"{risk:.1f}")
-        cc.metric("Score de diversification", f"{div:.0f} / 100", help="HHI = somme des carrés des parts. Proche de 100 = bien diversifié.")
-        pf = pd.DataFrame({"Pays": [df.loc[df["iso"] == k, "nom"].iloc[0] for k in w], "Part (%)": [v * 100 for v in w.values()]})
-        st.plotly_chart(px.pie(pf, names="Pays", values="Part (%)", title=f"Répartition du portefeuille (100 000 {devise_pf} fictifs)"), use_container_width=True)
+        a.markdown(kpi("Rendement espéré", f"{exp_ret:.2f} %", "Pondéré par les Ke"), unsafe_allow_html=True)
+        b.markdown(kpi("Risque du portefeuille", f"{risk:.1f} / 100", "Plus bas = plus sûr"), unsafe_allow_html=True)
+        cc.markdown(kpi("Score de diversification", f"{div:.0f} / 100", "HHI = somme des carrés des parts"), unsafe_allow_html=True)
+        pf = pd.DataFrame({"Pays": [df.loc[df["iso"] == k, "nom"].iloc[0] for k in w],
+                           "Part (%)": [v * 100 for v in w.values()]})
+        st.plotly_chart(px.pie(pf, names="Pays", values="Part (%)",
+                               title=f"Répartition du portefeuille (100 000 {devise_pf} fictifs)"),
+                        use_container_width=True)
         fragile = sum(v for k, v in w.items() if df.loc[df["iso"] == k, "categorie"].iloc[0] == "Fragile")
         msg = ("Portefeuille très concentré : un seul choc peut tout emporter." if div < 40 else
                "Portefeuille équilibré." if div < 75 else "Portefeuille bien diversifié.")
         if fragile > 0:
-            msg += f" ⚠️ {fragile*100:.0f} % du portefeuille est placé dans des pays fragiles : le rendement exigé y est élevé parce que le risque de perte y est réel."
+            msg += (f" ⚠️ {fragile * 100:.0f} % du portefeuille est placé dans des pays fragiles : "
+                    "le rendement exigé y est élevé parce que le risque de perte y est réel.")
         st.info("Commentaire : " + msg)
 
 # ---------- PAGE 6 : CARTE MENTALE & QUIZ ----------
-else:
-    st.subheader("Ta carte mentale du monde financier")
+elif page == "Carte Mentale & Quiz":
+    header("Carte mentale & Quiz", "Explore les fiches pays, puis teste tes connaissances")
     st.progress(len(st.session_state.visited) / len(COUNTRIES),
                 text=f"Pays explorés : {len(st.session_state.visited)} / {len(COUNTRIES)} — visite les fiches pays pour remplir ta carte.")
     if len(st.session_state.visited) == len(COUNTRIES):
-        st.balloons(); st.success("🎉 Tu as exploré les 10 pays : ta carte mentale est complète !")
+        st.balloons()
+        st.success("🎉 Tu as exploré les 10 pays : ta carte mentale est complète !")
     nom = st.selectbox("Quiz — choisis un pays", [c["nom"] for c in COUNTRIES])
     c = next(x for x in COUNTRIES if x["nom"] == nom)
     for i, (qtxt, choix, bonne, expl) in enumerate(QUIZ[c["iso"]]):
@@ -661,11 +750,39 @@ else:
             if rep == choix[bonne]:
                 st.success("Bonne réponse ! " + expl)
                 if key not in st.session_state.quiz_done:
-                    st.session_state.quiz_done.add(key); st.session_state.quiz_score += 1
+                    st.session_state.quiz_done.add(key)
+                    st.session_state.quiz_score += 1
             else:
                 st.error("❌ Pas tout à fait. " + expl)
     st.metric("Score quiz cumulé", f"{st.session_state.quiz_score} bonnes réponses")
 
+# ---------- PAGE 7 : MÉTHODOLOGIE ----------
+else:
+    header("Méthodologie", "Comment sont calculés le Score GeoCapital, le Ke et le verdict")
+    st.markdown('<div class="section-title">Score GeoCapital (/100)</div>', unsafe_allow_html=True)
+    crit = [("Croissance du PIB", 20), ("Stabilité macro (inflation + dette)", 20),
+            ("Risque souverain (notation + CDS)", 20), ("Stabilité politique & historique", 15),
+            ("Marché financier", 15), ("Facilité d'investir", 10)]
+    st.markdown('<div class="card">' + list_html([f"{n} : {mx} points maximum" for n, mx in crit]) +
+                '<div class="muted" style="margin-top:8px;">Le profil d\'investisseur modifie les poids : '
+                'Prudent double le risque souverain et la stabilité politique ; Audacieux double la croissance et le marché financier.</div></div>',
+                unsafe_allow_html=True)
+    st.markdown('<div class="section-title">Ke — rendement exigé (Damodaran)</div>', unsafe_allow_html=True)
+    st.latex(r"K_e = R_f + \beta \times \text{ERP}_{\text{pays}}")
+    st.markdown("Le CDS n'est pas rajouté : l'ERP totale contient déjà la prime de risque pays. "
+                "Une donnée manquante (CDS ou notation) vaut 0 point : elle est traitée comme un signal de risque.")
+    st.markdown('<div class="section-title">Verdict</div>', unsafe_allow_html=True)
+    st.markdown("≥ 75 : **INVESTIR** · 60 à 74 : **INVESTIR AVEC PRUDENCE** · 45 à 59 : **ATTENDRE** · < 45 : **ÉVITER**")
+    st.markdown('<div class="section-title">Glossaire express</div>', unsafe_allow_html=True)
+    st.markdown("""
+- **CDS** : assurance contre le défaut d'un État ; cher = État jugé risqué.
+- **Notation souveraine** : note (AAA à D) donnée à un État par les agences.
+- **ERP** : prime de risque totale exigée pour investir dans un pays (Damodaran).
+- **Ke** : rendement minimum exigé par un investisseur : Ke = Rf + β × ERP.
+- **HHI** : indice de concentration d'un portefeuille (proche de 1 = concentré).
+""")
+
 st.markdown("---")
 st.markdown('<div class="small-note">GeoCapital — prototype pédagogique Streamlit. Données de démonstration (ordres de grandeur 2024) à vérifier et sourcer avant usage réel. '
-            'Le Score GeoCapital et le Ke sont des outils d\'apprentissage, pas des conseils d\'investissement.</div>', unsafe_allow_html=True)
+            'Le Score GeoCapital et le Ke sont des outils d\'apprentissage, pas des conseils d\'investissement.</div>',
+            unsafe_allow_html=True)
